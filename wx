@@ -1,0 +1,27 @@
+#!/bin/bash
+
+pid=$(pgrep -x wechat)
+
+if [ -z "$pid" ]; then
+    echo "微信未打开，请先启动微信。"
+    exit 1
+fi
+
+wechat_wid=$(wmctrl -lx | awk '/wechat\.wechat/ {print $1; exit}')
+
+if [ -n "$wechat_wid" ]; then
+    state=$(xprop -id "$wechat_wid" WM_STATE 2>/dev/null | awk '/window state:/ {print $NF}')
+    if [ "$state" = "Normal" ]; then
+        wmctrl -i -c "$wechat_wid"
+    else
+        dbus-send --session --print-reply \
+            --dest="org.kde.StatusNotifierItem-${pid}-1" \
+            /StatusNotifierItem org.kde.StatusNotifierItem.Activate \
+            int32:0 int32:0 >/dev/null 2>&1
+    fi
+else
+    dbus-send --session --print-reply \
+        --dest="org.kde.StatusNotifierItem-${pid}-1" \
+        /StatusNotifierItem org.kde.StatusNotifierItem.Activate \
+        int32:0 int32:0 >/dev/null 2>&1
+fi
